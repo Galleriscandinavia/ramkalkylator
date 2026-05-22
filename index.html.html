@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    background: transparent;
+    color: #1a1a1a;
+    padding: 8px 0;
+  }
+  .section-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 8px;
+    margin-top: 18px;
+    font-family: Arial, sans-serif;
+  }
+  .btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .btn {
+    padding: 7px 14px;
+    border: 1.5px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+    font-family: Arial, sans-serif;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: #1a1a1a;
+  }
+  .btn:hover { border-color: #888; }
+  .btn.active {
+    background: #1a1a1a;
+    border-color: #1a1a1a;
+    color: #fff;
+  }
+  .matt-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .matt-input {
+    width: 80px;
+    padding: 8px 10px;
+    border: 1.5px solid #ccc;
+    border-radius: 6px;
+    font-family: Arial, sans-serif;
+    font-size: 1rem;
+    color: #1a1a1a;
+    background: #fff;
+    text-align: center;
+    -moz-appearance: textfield;
+  }
+  .matt-input:focus { outline: none; border-color: #1a1a1a; }
+  .matt-input::-webkit-outer-spin-button,
+  .matt-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .matt-sep { font-size: 1.1rem; color: #aaa; }
+  .matt-unit { font-size: 0.75rem; color: #aaa; font-family: Arial, sans-serif; }
+  .divider { border: none; border-top: 1px solid #e5e5e5; margin: 20px 0; }
+  .result-box {
+    background: #1a1a1a;
+    border-radius: 8px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .result-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #aaa;
+    font-family: Arial, sans-serif;
+  }
+  .result-price {
+    font-size: 2rem;
+    font-weight: 400;
+    color: #fff;
+    letter-spacing: 0.02em;
+  }
+  .result-price .unit {
+    font-size: 0.9rem;
+    color: #aaa;
+    font-family: Arial, sans-serif;
+    margin-left: 4px;
+  }
+  .hide { opacity: 0.3; pointer-events: none; }
+</style>
+</head>
+<body>
+
+  <div class="section-label">List</div>
+  <div class="btn-group" id="list">
+    <button class="btn active" data-val="budgetcap" onclick="sel(this,'list')">Budgetlist Cap</button>
+    <button class="btn" data-val="excl250" onclick="sel(this,'list')">Exclusiv 250-xx</button>
+    <button class="btn" data-val="excl270" onclick="sel(this,'list')">Exclusiv 270-xx</button>
+    <button class="btn" data-val="vinkel" onclick="sel(this,'list')">Vinkellist</button>
+  </div>
+
+  <div id="glas-section">
+    <div class="section-label">Glas</div>
+    <div class="btn-group" id="glas">
+      <button class="btn active" data-val="1" onclick="sel(this,'glas')">Vanligt glas</button>
+      <button class="btn" data-val="1.2" onclick="sel(this,'glas')">Musieglas</button>
+    </div>
+  </div>
+
+  <div id="passe-section">
+    <div class="section-label">Passepartout</div>
+    <div class="btn-group" id="passe">
+      <button class="btn active" data-val="1" onclick="sel(this,'passe')">Med passepartout</button>
+      <button class="btn" data-val="1.2" onclick="sel(this,'passe')">Flytande</button>
+    </div>
+  </div>
+
+  <div class="section-label">Mått (cm)</div>
+  <div class="matt-row">
+    <input class="matt-input" type="number" id="bredd" placeholder="Bredd" min="1" oninput="calculate()">
+    <span class="matt-sep">×</span>
+    <input class="matt-input" type="number" id="hojd" placeholder="Höjd" min="1" oninput="calculate()">
+    <span class="matt-unit">cm</span>
+  </div>
+
+  <hr class="divider">
+
+  <div class="result-box">
+    <div class="result-label">Pris inkl. moms</div>
+    <div class="result-price" id="kundpris">—<span class="unit">kr</span></div>
+  </div>
+
+<script>
+  const MARKUP = 1.7;
+  const MARKUP_VINKEL = 2.2;
+  const MOMS = 1.25;
+
+  const state = { glas: 1, list: 'budgetcap', passe: 1 };
+
+  const listConfig = {
+    budgetcap: { base: 1000, mult: 1.0, vinkel: false },
+    excl250:   { base: 1000, mult: 1.1, vinkel: false },
+    excl270:   { base: 1000, mult: 1.3, vinkel: false },
+    vinkel:    { vinkel: true }
+  };
+
+  const sizeTable = [
+    { area: 2000, mult: 0.9 },
+    { area: 3500, mult: 1.2 },
+    { area: 7000, mult: 1.7 },
+    { area: 10800, mult: 2.1 }
+  ];
+
+  function getSizeMult(w, h) {
+    const area = w * h;
+    if (area <= sizeTable[0].area) return sizeTable[0].mult;
+    if (area >= sizeTable[sizeTable.length - 1].area) return sizeTable[sizeTable.length - 1].mult;
+    for (let i = 0; i < sizeTable.length - 1; i++) {
+      const a = sizeTable[i], b = sizeTable[i + 1];
+      if (area >= a.area && area <= b.area) {
+        const t = (area - a.area) / (b.area - a.area);
+        return a.mult + t * (b.mult - a.mult);
+      }
+    }
+    return 1;
+  }
+
+  function sel(el, group) {
+    document.querySelectorAll('#' + group + ' .btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    if (group === 'list') {
+      state.list = el.dataset.val;
+      const isVinkel = state.list === 'vinkel';
+      document.getElementById('glas-section').classList.toggle('hide', isVinkel);
+      document.getElementById('passe-section').classList.toggle('hide', isVinkel);
+    } else {
+      state[group] = parseFloat(el.dataset.val);
+    }
+    calculate();
+  }
+
+  function calculate() {
+    const w = parseFloat(document.getElementById('bredd').value);
+    const h = parseFloat(document.getElementById('hojd').value);
+
+    if (!w || !h || w <= 0 || h <= 0) {
+      document.getElementById('kundpris').innerHTML = '—<span class="unit">kr</span>';
+      return;
+    }
+
+    const cfg = listConfig[state.list];
+    let inkop, kundpris;
+
+    if (cfg.vinkel) {
+      inkop = (w + h) * 6;
+      kundpris = inkop * MARKUP_VINKEL * MOMS;
+    } else {
+      inkop = cfg.base * cfg.mult * state.glas * state.passe * getSizeMult(w, h);
+      kundpris = inkop * MARKUP * MOMS;
+    }
+
+    document.getElementById('kundpris').innerHTML =
+      Math.round(kundpris).toLocaleString('sv-SE') + '<span class="unit">kr</span>';
+  }
+</script>
+</body>
+</html>
