@@ -63,6 +63,14 @@
   .matt-input::-webkit-inner-spin-button { -webkit-appearance: none; }
   .matt-sep { font-size: 1.1rem; color: #aaa; }
   .matt-unit { font-size: 0.75rem; color: #aaa; font-family: Arial, sans-serif; }
+  .ram-matt {
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: #888;
+    font-family: Arial, sans-serif;
+    min-height: 18px;
+  }
+  .ram-matt strong { color: #1a1a1a; font-weight: 600; }
   .divider { border: none; border-top: 1px solid #e5e5e5; margin: 20px 0; }
   .result-box {
     background: #1a1a1a;
@@ -121,13 +129,14 @@
     </div>
   </div>
 
-  <div class="section-label">Mått (cm)</div>
+  <div class="section-label">Verksmått (cm)</div>
   <div class="matt-row">
     <input class="matt-input" type="number" id="bredd" placeholder="Bredd" min="1" oninput="calculate()">
     <span class="matt-sep">×</span>
     <input class="matt-input" type="number" id="hojd" placeholder="Höjd" min="1" oninput="calculate()">
     <span class="matt-unit">cm</span>
   </div>
+  <div class="ram-matt" id="rammatt"></div>
 
   <hr class="divider">
 
@@ -137,9 +146,12 @@
   </div>
 
 <script>
-  const MARKUP = 1.7;
-  const MARKUP_VINKEL = 2.2;
-  const MOMS = 1.25;
+  const MARKUP_GLAS    = 1.5;   // vanligt glas, 50% påslag
+  const MARKUP_MUSIE   = 1.7;   // musieglas, 70% påslag
+  const MARKUP_VINKEL  = 2.2;   // vinkellist, 120% påslag
+  const MOMS           = 1.25;
+  const PADDING_GLAS   = 12;    // +6 cm per sida
+  const PADDING_VINKEL = 8;     // +4 cm per sida
 
   const state = { glas: 1, list: 'budgetcap', passe: 1 };
 
@@ -151,9 +163,9 @@
   };
 
   const sizeTable = [
-    { area: 2000, mult: 0.9 },
-    { area: 3500, mult: 1.2 },
-    { area: 7000, mult: 1.7 },
+    { area: 2000,  mult: 0.9 },
+    { area: 3500,  mult: 1.2 },
+    { area: 7000,  mult: 1.7 },
     { area: 10800, mult: 2.1 }
   ];
 
@@ -191,22 +203,30 @@
 
     if (!w || !h || w <= 0 || h <= 0) {
       document.getElementById('kundpris').innerHTML = '—<span class="unit">kr</span>';
+      document.getElementById('rammatt').innerHTML = '';
       return;
     }
 
     const cfg = listConfig[state.list];
-    let inkop, kundpris;
+    let inkop, kundpris, rw, rh;
 
     if (cfg.vinkel) {
-      inkop = (w + h) * 6;
+      rw = w + PADDING_VINKEL;
+      rh = h + PADDING_VINKEL;
+      inkop = (rw + rh) * 6;
       kundpris = inkop * MARKUP_VINKEL * MOMS;
     } else {
-      inkop = cfg.base * cfg.mult * state.glas * state.passe * getSizeMult(w, h);
-      kundpris = inkop * MARKUP * MOMS;
+      rw = w + PADDING_GLAS;
+      rh = h + PADDING_GLAS;
+      inkop = cfg.base * cfg.mult * state.glas * state.passe * getSizeMult(rw, rh);
+      const markup = state.glas === 1 ? MARKUP_GLAS : MARKUP_MUSIE;
+      kundpris = inkop * markup * MOMS;
     }
 
     document.getElementById('kundpris').innerHTML =
       Math.round(kundpris).toLocaleString('sv-SE') + '<span class="unit">kr</span>';
+    document.getElementById('rammatt').innerHTML =
+      'Rammått: <strong>' + rw + ' × ' + rh + ' cm</strong>';
   }
 </script>
 </body>
